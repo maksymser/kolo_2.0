@@ -1,0 +1,1147 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AZDUS - Koło Losu</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Boldonse&display=swap">
+    <style>
+        :root {
+            --bg-color: #e0e0e0;
+            --sidebar-bg: #ffffff;
+            --text-color: #1a1a1a;
+            --accent-color: #3498db;
+            --accent-hover: #2980b9;
+            --danger-color: #e74c3c;
+            --success-color: #2ecc71;
+            --card-bg: #ffffff;
+            --border-color: #cccccc;
+            --shadow: 0 4px 6px rgba(0,0,0,0.1);
+            --font-main: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            --font-header: 'Boldonse', 'Impact', sans-serif;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #141517;
+            --sidebar-bg: #1f2126;
+            --text-color: #ecf0f1;
+            --accent-color: #7289da;
+            --accent-hover: #5b6eae;
+            --card-bg: #1f2126;
+            --border-color: #2c2f33;
+            --shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+
+        [data-theme="kick"] {
+            --bg-color: #0b0e11;
+            --sidebar-bg: #141517;
+            --text-color: #ffffff;
+            --accent-color: #53fc18; /* KICK Green */
+            --accent-hover: #42ca10;
+            --card-bg: #191b1f;
+            --border-color: #24272c;
+            --shadow: 0 4px 15px rgba(83, 252, 24, 0.15);
+        }
+
+        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+        body { margin: 0; padding: 0; font-family: var(--font-main); background: var(--bg-color); color: var(--text-color); overflow: hidden; height: 100vh; width: 100vw; transition: background 0.3s; }
+
+        /* --- LAYOUT --- */
+        #app-container { display: flex; height: 100%; flex-direction: column; }
+        
+        /* Desktop Navigation (Top) */
+        @media (min-width: 769px) {
+            #app-container { flex-direction: column; }
+            nav { 
+                height: 60px; display: flex; align-items: center; padding: 0 20px; 
+                background: var(--sidebar-bg); border-bottom: 1px solid var(--border-color); 
+                justify-content: space-between;
+            }
+            .nav-links { display: flex; gap: 10px; }
+            .nav-item { 
+                padding: 10px 20px; cursor: pointer; border-radius: 5px; font-weight: bold; transition: 0.2s; 
+                display: flex; align-items: center; gap: 8px;
+            }
+            .nav-item:hover { background: rgba(128,128,128,0.1); }
+            .nav-item.active { background: var(--accent-color); color: #fff; }
+            .logo { font-family: var(--font-header); font-size: 24px; letter-spacing: 1px; }
+            [data-theme="kick"] .nav-item.active { color: #000; }
+        }
+
+        /* Mobile Navigation (Hamburger + Sidebar) */
+        @media (max-width: 768px) {
+            nav { 
+                height: 60px; display: flex; align-items: center; padding: 0 15px; 
+                background: var(--sidebar-bg); border-bottom: 1px solid var(--border-color); z-index: 100; position: relative; justify-content: space-between;
+            }
+            .hamburger { font-size: 24px; cursor: pointer; padding: 10px; }
+            .mobile-sidebar {
+                position: fixed; top: 0; left: -250px; width: 250px; height: 100%;
+                background: var(--sidebar-bg); z-index: 200; transition: 0.3s ease-in-out;
+                box-shadow: 2px 0 10px rgba(0,0,0,0.5); display: flex; flex-direction: column; padding-top: 60px;
+            }
+            .mobile-sidebar.open { left: 0; }
+            .mobile-overlay {
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                background: rgba(0,0,0,0.5); z-index: 150; opacity: 0; pointer-events: none; transition: 0.3s;
+            }
+            .mobile-overlay.open { opacity: 1; pointer-events: all; }
+            .nav-links { flex-direction: column; padding: 10px; width: 100%; }
+            .nav-item { padding: 15px; width: 100%; border-bottom: 1px solid var(--border-color); text-align: left; }
+            .logo { font-family: var(--font-header); font-size: 20px; margin-left: 10px; }
+        }
+
+        /* --- CONTENT PAGES --- */
+        #content-area { flex: 1; position: relative; overflow: hidden; }
+        .page { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            display: none; flex-direction: column; align-items: center; justify-content: center; 
+            padding: 20px; overflow-y: auto; 
+        }
+        .page.active { display: flex; }
+
+        /* --- WHEEL PAGE --- */
+        #wheel-wrapper {
+            position: relative; width: min(90vw, 80vh); height: min(90vw, 80vh);
+            display: flex; justify-content: center; align-items: center;
+            transition: transform 1s ease-in-out;
+        }
+        canvas { width: 100%; height: 100%; filter: drop-shadow(0 10px 15px rgba(0,0,0,0.3)); }
+        
+        /* Pointer */
+        #pointer {
+            position: absolute; top: 50%; right: -25px; width: 50px; height: 50px;
+            transform: translateY(-50%); z-index: 10;
+            display: flex; align-items: center;
+            transition: transform 0.1s;
+        }
+        #pointer::before {
+            content: ''; display: block; width: 0; height: 0;
+            border-top: 15px solid transparent;
+            border-bottom: 15px solid transparent;
+            border-right: 40px solid #e74c3c;
+            filter: drop-shadow(-2px 2px 2px rgba(0,0,0,0.4));
+        }
+        
+        /* Controls */
+        #controls-overlay {
+            position: absolute; bottom: 20px; display: flex; gap: 15px; z-index: 20;
+        }
+        .btn {
+            padding: 12px 24px; border: none; border-radius: 50px;
+            font-size: 16px; font-weight: bold; cursor: pointer;
+            background: var(--accent-color); color: #fff;
+            box-shadow: 0 4px 0 rgba(0,0,0,0.2);
+            transition: transform 0.1s, filter 0.2s;
+            text-transform: uppercase; font-family: var(--font-header); letter-spacing: 1px;
+        }
+        .btn:active { transform: translateY(4px); box-shadow: none; }
+        [data-theme="kick"] .btn { color: #000; }
+        .hint-text {
+            position: absolute; bottom: 80px; font-size: 12px; opacity: 0.6;
+            text-transform: uppercase; letter-spacing: 1px; animation: pulse 2s infinite;
+        }
+
+        /* Result Overlay */
+        #result-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); backdrop-filter: blur(5px);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            opacity: 0; pointer-events: none; transition: opacity 0.5s; z-index: 50;
+        }
+        #result-overlay.visible { opacity: 1; pointer-events: all; }
+        #result-text { 
+            font-family: var(--font-header); font-size: clamp(30px, 5vw, 60px); color: #fff; 
+            text-align: center; text-shadow: 0 0 10px var(--accent-color); margin-bottom: 20px;
+            transform: scale(0.8); transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        #result-overlay.visible #result-text { transform: scale(1); }
+        #result-img { 
+            max-width: 60%; max-height: 40vh; border-radius: 10px; 
+            box-shadow: 0 0 20px rgba(255,255,255,0.2); opacity: 0; transform: translateY(20px);
+            transition: 0.5s 0.3s;
+        }
+        #result-overlay.visible #result-img { opacity: 1; transform: translateY(0); }
+
+        /* Jackpot Styles */
+        .jackpot-active #wheel-wrapper {
+            box-shadow: 0 0 50px rgba(255, 215, 0, 0.5);
+            border-radius: 50%;
+        }
+        .jackpot-lights {
+            position: absolute; top: -5%; left: -5%; width: 110%; height: 110%;
+            border-radius: 50%; border: 5px dotted gold;
+            animation: spinLights 20s linear infinite; pointer-events: none; opacity: 0;
+        }
+        .jackpot-active .jackpot-lights { opacity: 1; }
+
+        /* --- OTHER PAGES Styles --- */
+        .container { width: 100%; max-width: 800px; margin: 0 auto; padding-bottom: 50px;}
+        .card { background: var(--card-bg); padding: 20px; border-radius: 10px; box-shadow: var(--shadow); margin-bottom: 15px; }
+        h2 { font-family: var(--font-header); margin-top: 0; border-bottom: 2px solid var(--border-color); padding-bottom: 10px; }
+        
+        /* History */
+        .history-item { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid var(--border-color); font-size: 14px; }
+        .history-item:last-child { border-bottom: none; }
+        .tag { padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; text-transform: uppercase; }
+        .tag.mode-standard { background: #95a5a6; color: #fff; }
+        .tag.mode-multi { background: #9b59b6; color: #fff; }
+        .tag.mode-jackpot { background: gold; color: #000; }
+
+        /* Custom Inputs */
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, select, textarea { width: 100%; padding: 10px; border-radius: 5px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); }
+        
+        /* Settings */
+        .toggle-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .switch { position: relative; display: inline-block; width: 50px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 24px; }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--accent-color); }
+        input:checked + .slider:before { transform: translateX(26px); }
+        
+        /* Loading Bar (Custom Mode) */
+        #loading-bar-container {
+            width: 80%; height: 20px; background: #333; border-radius: 10px; overflow: hidden;
+            display: none; margin: 20px 0; position: relative;
+        }
+        #loading-bar { width: 0%; height: 100%; background: linear-gradient(90deg, #f1c40f, #e74c3c); transition: width 0.1s linear; }
+        #loading-flame { position: absolute; right: 0; top: -10px; font-size: 24px; transform: translateX(50%); }
+
+        /* Batch Results */
+        .batch-results { list-style: none; padding: 0; max-height: 60vh; overflow-y: auto; width: 100%; }
+        .batch-item { padding: 10px; background: rgba(255,255,255,0.05); margin-bottom: 5px; border-radius: 5px; display: flex; justify-content: space-between;}
+
+        @keyframes pulse { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
+        @keyframes spinLights { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        /* Confetti Canvas */
+        #confetti-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 60; }
+    </style>
+</head>
+<body>
+
+<div id="app-container">
+    <!-- Navigation -->
+    <nav>
+        <div class="logo">AZDUS <span style="font-size: 0.7em; opacity: 0.7">KOŁO LOSU</span></div>
+        
+        <!-- Desktop Menu -->
+        <div class="nav-links" id="desktop-nav">
+            <div class="nav-item active" onclick="app.navigate('wheel')"> KOŁO LOSU</div>
+            <div class="nav-item" onclick="app.navigate('custom')"> NIESTANDARDOWE</div>
+            <div class="nav-item" onclick="app.navigate('history')"> HISTORIA</div>
+            <div class="nav-item" onclick="app.navigate('settings')"> USTAWIENIA</div>
+        </div>
+
+        <!-- Mobile Hamburger -->
+        <div class="hamburger" id="hamburger" style="display: none;">☰</div>
+    </nav>
+
+    <!-- Mobile Sidebar -->
+    <div class="mobile-overlay" id="mobile-overlay"></div>
+    <div class="mobile-sidebar" id="mobile-sidebar">
+        <div class="nav-item active" onclick="app.navigate('wheel')"> KOŁO LOSU</div>
+        <div class="nav-item" onclick="app.navigate('custom')"> NIESTANDARDOWE</div>
+        <div class="nav-item" onclick="app.navigate('history')"> HISTORIA</div>
+        <div class="nav-item" onclick="app.navigate('settings')"> USTAWIENIA</div>
+    </div>
+
+    <div id="content-area">
+        <!-- Confetti -->
+        <canvas id="confetti-canvas"></canvas>
+
+        <!-- PAGE: WHEEL -->
+        <div id="page-wheel" class="page active">
+            <div id="wheel-wrapper">
+                <canvas id="wheelCanvas" width="800" height="800"></canvas>
+                <div id="pointer"></div>
+                <div class="jackpot-lights"></div>
+            </div>
+            <div class="hint-text">Kliknij przycisk lub spację aby zakręcić</div>
+            <div id="controls-overlay">
+                <button class="btn" id="spin-btn" onclick="app.wheelController.startSpin()">LOSUJ</button>
+            </div>
+
+            <div id="result-overlay">
+                <div id="result-text">Wylosowano: Coś tam</div>
+                <img id="result-img" src="" alt="Nagroda" onerror="this.style.display='none'">
+            </div>
+        </div>
+
+        <!-- PAGE: CUSTOM -->
+        <div id="page-custom" class="page">
+            <div class="container">
+                <h2>Tryby Niestandardowe</h2>
+                
+                <div class="card">
+                    <h3>Szybkie Multi-Losowanie</h3>
+                    <div style="display: flex; gap: 10px; margin-top: 10px;">
+                        <button class="btn" style="flex:1" onclick="app.startMultiMode(2)">2x Spin</button>
+                        <button class="btn" style="flex:1" onclick="app.startMultiMode(3)">3x Spin</button>
+                    </div>
+                    <p style="font-size: 12px; opacity: 0.7; margin-top: 10px;">Koło zakręci się automatycznie kilka razy, wyniki pojawią się zbiorczo w historii.</p>
+                </div>
+
+                <div class="card">
+                    <h3>Masowe Losowanie</h3>
+                    <div class="form-group">
+                        <label>Ilość losowań (4-50):</label>
+                        <input type="number" id="custom-count" min="4" max="50" value="10">
+                    </div>
+                    <div class="form-group">
+                        <label>Tryb:</label>
+                        <select id="custom-speed-mode">
+                            <option value="fast">Przyspieszony (Szybkie obroty)</option>
+                            <option value="instant">Błyskawiczny (Pasek ładowania)</option>
+                        </select>
+                    </div>
+                    <button class="btn" style="width: 100%" onclick="app.startCustomBatch()">URUCHOM</button>
+                    
+                    <div id="loading-bar-container">
+                        <div id="loading-bar"></div>
+                        <div id="loading-flame">🔥</div>
+                    </div>
+                </div>
+                
+                <div id="batch-result-area" class="card" style="display:none">
+                    <h3>Wyniki Sesji:</h3>
+                    <ul class="batch-results" id="batch-list"></ul>
+                    <button class="btn" style="width: 100%; margin-top: 10px; background: #555" onclick="document.getElementById('batch-result-area').style.display='none'">ZAMKNIJ</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- PAGE: HISTORY -->
+        <div id="page-history" class="page">
+            <div class="container">
+                <div style="display:flex; justify-content:space-between; align-items:center">
+                    <h2>Historia Losowań</h2>
+                    <select id="history-limit" onchange="app.historyManager.render()" style="width: auto;">
+                        <option value="5">5</option>
+                        <option value="10" selected>10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                    </select>
+                </div>
+                <div class="card" id="history-list">
+                    <!-- JS populates this -->
+                    <div style="text-align:center; padding: 20px;">Brak historii</div>
+                </div>
+                <div style="display:flex; justify-content:center; gap:10px; margin-top:10px;">
+                    <button class="btn" style="padding: 5px 15px; font-size: 12px;" onclick="app.historyManager.prevPage()">&lt;</button>
+                    <span id="history-page-indicator" style="align-self:center">1 / 1</span>
+                    <button class="btn" style="padding: 5px 15px; font-size: 12px;" onclick="app.historyManager.nextPage()">&gt;</button>
+                </div>
+                <button class="btn" style="background: var(--danger-color); width: 100%; margin-top: 20px;" onclick="app.historyManager.clear()">WYCZYŚĆ HISTORIĘ</button>
+            </div>
+        </div>
+
+        <!-- PAGE: SETTINGS -->
+        <div id="page-settings" class="page">
+            <div class="container">
+                <h2>Ustawienia</h2>
+                
+                <div class="card">
+                    <h3>Wygląd i Dźwięk</h3>
+                    <div class="toggle-row">
+                        <span>Tryb Ciemny</span>
+                        <label class="switch"><input type="checkbox" id="theme-dark" onchange="app.settings.toggleTheme('dark')"><span class="slider"></span></label>
+                    </div>
+                    <div class="toggle-row">
+                        <span>Tryb KICK</span>
+                        <label class="switch"><input type="checkbox" id="theme-kick" onchange="app.settings.toggleTheme('kick')"><span class="slider"></span></label>
+                    </div>
+                    <div class="form-group">
+                        <label>Głośność Główna</label>
+                        <input type="range" min="0" max="1" step="0.1" id="volume-slider" onchange="app.settings.setVolume(this.value)">
+                    </div>
+                    <div class="toggle-row">
+                        <span>Dźwięk Cykania</span>
+                        <label class="switch"><input type="checkbox" id="sound-tick" checked onchange="app.settings.toggleTick(this.checked)"><span class="slider"></span></label>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>Ekspert (Edycja Nagród)</h3>
+                    <p style="font-size: 12px; color: var(--danger-color)">Uwaga: Edytujesz surowy JSON. Błąd składni może zepsuć koło. Suma prawdopodobieństw powinna być bliska 1.</p>
+                    <textarea id="json-editor" rows="10" style="font-family: monospace; font-size: 12px;"></textarea>
+                    <div style="display: flex; gap: 10px; margin-top: 10px;">
+                        <button class="btn" style="flex: 1; background: #555" onclick="app.settings.resetPrizes()">RESETUJ DO DOMYŚLNYCH</button>
+                        <button class="btn" style="flex: 1" onclick="app.settings.savePrizes()">ZAPISZ ZMIANY</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+/* --- DANE --- */
+const defaultPrizes = [
+  { name: "Nic xd", probability: 0.08, type: "regular", color: "linear-gradient(135deg, #8e44ad, #3498db)", gif: "https://cdn.7tv.app/emote/01F38SGEQG000AG1XYT03162S8/4x.avif" },
+  { name: "Stanie na głowie", probability: 0.10, type: "regular", color: "linear-gradient(135deg, #1d976c, #93f9b9)", gif: "https://www.healthshots.com/wp-content/uploads/2019/12/Yoga-headstand.gif" },
+  { name: "Timeout 1h", probability: 0.08, type: "regular", color: "linear-gradient(135deg, #009fff, #ec2f4b)", gif: "https://cdn.7tv.app/emote/01H1848QNG0005EZED5J0EYKHR/4x.webp" },
+  { name: "Krzyczę BOKS", probability: 0.08, type: "regular", color: "linear-gradient(135deg, #ff512f, #dd2476)", gif: "https://cdn.7tv.app/emote/01G3SCEE20000AVHF824CCM0DA/4x.avif" },
+  { name: "Nic xd", probability: 0.05, type: "regular", color: "linear-gradient(135deg, #8e44ad, #3498db)", gif: "https://cdn.7tv.app/emote/01G6SRPZ400006H81S3K13JY36/4x.webp" },
+  { name: "Piję łyka wody", probability: 0.08, type: "regular", color: "linear-gradient(135deg, #3F2B96, #A8C0FF)", gif: "https://cdn.7tv.app/emote/01GCWH9E9R000D8RDSXFWM2GBA/4x.avif" },
+  { name: "10 pompek", probability: 0.08, type: "regular", color: "linear-gradient(135deg, #fc466b, #3f5efb)", gif: "https://cdn.7tv.app/emote/01F6R3WYDR000B7RB73RKS83AK/4x.avif" },
+  { name: "Cisza 2 min", probability: 0.08, type: "regular", color: "linear-gradient(135deg, #00C9FF, #92FE9D)", gif: "https://cdn.7tv.app/emote/01GYZBC7FR0006TGDMK2MFGXGW/4x.webp" },
+  { name: "Stoję 1 min", probability: 0.08, type: "regular", color: "linear-gradient(135deg, #4b6cb7, #182848)", gif: "https://cdn.7tv.app/emote/01GNQJGTSG00078AS6P1AC892Q/4x.webp" },
+  { name: "Krzyczę ło tego", probability: 0.08, type: "regular", color: "linear-gradient(135deg, #8e44ad, #3498db)", gif: "https://cdn.7tv.app/emote/01H1AAGAGR0003C6C0Q3R0B0VX/4x.avif" },
+  { name: "Nic xd", probability: 0.08, type: "regular", color: "linear-gradient(135deg, #8e44ad, #3498db)", gif: "https://cdn.7tv.app/emote/01FZ975PV8000B4AWRZNMVNEXN/4x.avif" },
+  { name: "Głos dziwki 2 min", probability: 0.08, type: "regular", color: "linear-gradient(135deg, #BB377D, #FBD3E9)", gif: "https://media1.tenor.com/m/1SPr0yOrWdgAAAAd/paprikafume-slay-queen.gif" },  
+  { name: "TTS 2 min", probability: 0.03, type: "regular", color: "linear-gradient(135deg, #BB377D, #FBD3E9)", gif: "https://media1.tenor.com/m/1SPr0yOrWdgAAAAd/paprikafume-slay-queen.gif" }, 
+  { name: "JACKPOT", probability: 0.02, type: "jackpot", color: "gold", gif: "" }
+];
+
+const defaultJackpotPrizes = [
+  { name: "Zerowanie piwa", probability: 0.4, type: "special", color: "linear-gradient(135deg, #ffe898, #57370e)", gif: "https://cdn.7tv.app/emote/01H8CPJG9R0009CBM9NXZQY8HT/4x.avif" },
+  { name: "VIP", probability: 0.3, type: "special", color: "linear-gradient(135deg, #ffe898, #57370e)", gif: "https://cdn.7tv.app/emote/01G3E8EC580004KFXXGTW7QDKM/4x.avif" },
+  { name: "STREAM 24H!!!", probability: 0.3, type: "special", color: "linear-gradient(135deg, #ffe898, #57370e)", gif: "https://cdn.7tv.app/emote/01J0KSR6D0000CV45TECHJ0JRZ/4x.avif" }
+];
+
+/* --- LOGIKA APLIKACJI --- */
+const app = {
+    prizes: [],
+    jackpotPrizes: [],
+    ctx: null,
+    canvas: null,
+    currentAngle: 0,
+    isSpinning: false,
+    lastIndex: -1,
+    audioCtx: null,
+    globalVolume: 1,
+    tickEnabled: true,
+    mode: 'standard', // standard, multi, jackpot
+    multiQueue: 0, // how many spins left
+    
+    init: function() {
+        // Load data
+        const savedPrizes = localStorage.getItem('azdus_prizes');
+        this.prizes = savedPrizes ? JSON.parse(savedPrizes) : JSON.parse(JSON.stringify(defaultPrizes));
+        this.jackpotPrizes = JSON.parse(JSON.stringify(defaultJackpotPrizes));
+        
+        // Setup Canvas
+        this.canvas = document.getElementById('wheelCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        
+        // Render loop
+        requestAnimationFrame(this.animate.bind(this));
+        
+        // Events
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && !this.isSpinning && document.getElementById('page-wheel').classList.contains('active')) {
+                this.wheelController.startSpin();
+            }
+        });
+
+        // UI Setup
+        this.settings.load();
+        this.historyManager.load();
+        this.checkMobileMenu();
+        window.addEventListener('resize', this.checkMobileMenu);
+        
+        // Preload images (simple version)
+        this.prizes.forEach(p => { if(p.gif) new Image().src = p.gif; });
+    },
+
+    navigate: function(pageId) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById('page-' + pageId).classList.add('active');
+        
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        // Update nav active state logic
+        const items = document.querySelectorAll(`.nav-item[onclick*="'${pageId}'"]`);
+        items.forEach(i => i.classList.add('active'));
+
+        // Close mobile menu
+        document.getElementById('mobile-sidebar').classList.remove('open');
+        document.getElementById('mobile-overlay').classList.remove('open');
+
+        if (pageId === 'settings') {
+            document.getElementById('json-editor').value = JSON.stringify(this.prizes, null, 2);
+        }
+    },
+
+    checkMobileMenu: function() {
+        const isMobile = window.innerWidth <= 768;
+        document.getElementById('hamburger').style.display = isMobile ? 'block' : 'none';
+        document.getElementById('desktop-nav').style.display = isMobile ? 'none' : 'flex';
+    },
+
+    /* --- KOŁO I RYSOWANIE --- */
+    animate: function(timestamp) {
+        if (!this.ctx) return;
+        this.ctx.clearRect(0, 0, 800, 800);
+        const centerX = 400;
+        const centerY = 400;
+        const radius = 380;
+        
+        // Draw Segments
+        const activePrizes = this.mode === 'jackpot' ? this.jackpotPrizes : this.prizes;
+        const arc = (2 * Math.PI) / activePrizes.length;
+
+        for (let i = 0; i < activePrizes.length; i++) {
+            const angle = this.currentAngle + i * arc;
+            
+            this.ctx.beginPath();
+            this.ctx.moveTo(centerX, centerY);
+            this.ctx.arc(centerX, centerY, radius, angle, angle + arc);
+            this.ctx.closePath();
+            
+            // Gradient Fill
+            const grad = this.ctx.createLinearGradient(centerX, centerY, centerX + Math.cos(angle + arc/2)*radius, centerY + Math.sin(angle + arc/2)*radius);
+            
+            if (activePrizes[i].color === 'gold') {
+                grad.addColorStop(0, '#ffd700');
+                grad.addColorStop(0.5, '#bf9b30');
+                grad.addColorStop(1, '#ffd700');
+            } else if (activePrizes[i].color.includes('gradient')) {
+                // Parse simple gradient or fallback
+                try {
+                   const colors = activePrizes[i].color.match(/#[a-fA-F0-9]{6}|#[a-fA-F0-9]{3}/g);
+                   if(colors && colors.length >= 2) {
+                       grad.addColorStop(0, colors[0]);
+                       grad.addColorStop(1, colors[1]);
+                   } else {
+                       grad.addColorStop(0, '#ccc'); grad.addColorStop(1, '#fff');
+                   }
+                } catch(e) { grad.addColorStop(0, '#999'); grad.addColorStop(1, '#eee'); }
+            } else {
+                grad.addColorStop(0, activePrizes[i].color || '#ccc');
+                grad.addColorStop(1, '#fff');
+            }
+
+            this.ctx.fillStyle = grad;
+            this.ctx.fill();
+            this.ctx.stroke(); // Separator
+
+            // Text
+            this.ctx.save();
+            this.ctx.translate(centerX, centerY);
+            this.ctx.rotate(angle + arc / 2);
+            this.ctx.textAlign = "right";
+            this.ctx.fillStyle = "#fff";
+            this.ctx.font = "bold 24px 'Segoe UI'";
+            this.ctx.shadowColor = "rgba(0,0,0,0.8)";
+            this.ctx.shadowBlur = 4;
+            
+            // Truncate text if too long
+            let text = activePrizes[i].name;
+            if (text.length > 20) text = text.substring(0, 18) + '...';
+            this.ctx.fillText(text, radius - 20, 10);
+            this.ctx.restore();
+        }
+
+        // Center Cap
+        this.ctx.beginPath();
+        this.ctx.arc(centerX, centerY, 30, 0, 2 * Math.PI);
+        this.ctx.fillStyle = "#fff";
+        this.ctx.fill();
+        
+        // Tick Logic during spin
+        if (this.isSpinning) {
+            this.wheelController.updatePhysics();
+        }
+
+        requestAnimationFrame(this.animate.bind(this));
+    },
+
+    /* --- KONTROLER KOŁA --- */
+    wheelController: {
+        velocity: 0,
+        targetAngle: 0,
+        spinTime: 0,
+        totalSpinTime: 0,
+        state: 'idle', // idle, spinning, correcting, finished
+        startAngle: 0,
+        targetIndex: 0,
+
+        startSpin: function(forceFast = false) {
+            if (app.isSpinning) return;
+            
+            // Prepare Audio
+            if (!app.audioCtx) app.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (app.audioCtx.state === 'suspended') app.audioCtx.resume();
+
+            // UI Cleanup
+            document.getElementById('result-overlay').classList.remove('visible');
+            document.getElementById('result-img').style.display = 'none';
+
+            // Logic: Weighted Random
+            const activeList = app.mode === 'jackpot' ? app.jackpotPrizes : app.prizes;
+            
+            // Anti-Cheat (only for regular mode)
+            let selectedIndex = -1;
+            let attempts = 0;
+            
+            do {
+                let rand = Math.random();
+                let cumulative = 0;
+                for (let i = 0; i < activeList.length; i++) {
+                    cumulative += activeList[i].probability;
+                    if (rand <= cumulative) {
+                        selectedIndex = i;
+                        break;
+                    }
+                }
+                if (selectedIndex === -1) selectedIndex = activeList.length - 1; // Fallback
+                attempts++;
+            } while (app.mode !== 'jackpot' && selectedIndex === app.lastIndex && attempts < 2);
+
+            this.targetIndex = selectedIndex;
+            if (app.mode !== 'jackpot') app.lastIndex = selectedIndex;
+
+            // Calculate Angles
+            // We want the pointer (at 0deg/360deg or 0 rad) to point to the segment.
+            // In our draw loop, 0 is 3 o'clock. Pointer is at 3 o'clock (right). 
+            // Wait, CSS pointer is Right. 0 radians is Right. Correct.
+            // To land on index i, the wheel must rotate so that segment i is at 0 rad.
+            const arc = (2 * Math.PI) / activeList.length;
+            // Center of segment i is at: currentAngle + i*arc + arc/2
+            // We want: finalAngle + i*arc + arc/2 = 2*PI * K (where K is integer rotations)
+            // So finalAngle = - (i*arc + arc/2) + 2*PI*K
+            
+            const segmentCenter = this.targetIndex * arc + arc / 2;
+            const randomRotations = 2 * Math.PI * (Math.floor(Math.random() * 5) + 6); // 6-10 rotations
+            
+            // Current angle normalized
+            let current = app.currentAngle % (2 * Math.PI);
+            
+            // Calculate delta needed to reach target
+            // Target position is 0 (pointer). The segment is currently at current + segmentCenter.
+            // We need to rotate by delta such that (current + delta + segmentCenter) % 2PI = 0
+            // delta = - (current + segmentCenter) + rotations
+            
+            const finalAngle = -(segmentCenter) + randomRotations; 
+            
+            // Setup Animation
+            this.startAngle = app.currentAngle;
+            this.targetAngle = this.startAngle + (finalAngle - (this.startAngle % (2 * Math.PI))); 
+            // Fix modulo math to ensure we spin forward significantly
+            if (this.targetAngle < this.startAngle + 2*Math.PI*6) {
+                this.targetAngle += 2*Math.PI*10; // Ensure enough spins
+            }
+            // Fine tune to center exactly
+            const stopAngle = -(segmentCenter); // This is where we want to end modulo 2PI
+            const currentMod = this.targetAngle % (2 * Math.PI);
+            // Adjust targetAngle to align exactly with stopAngle
+            this.targetAngle = this.targetAngle - currentMod + stopAngle;
+
+            
+            this.totalSpinTime = forceFast ? 2000 : (Math.random() * 2000 + 4000); // 4-6s normally, 2s fast
+            this.spinTime = 0;
+            app.isSpinning = true;
+            this.state = 'spinning';
+        },
+
+        updatePhysics: function() {
+            // Time step (approx 16ms)
+            this.spinTime += 16; 
+
+            // Easing: Cubic Ease Out -> start fast, slow down
+            const t = Math.min(this.spinTime / this.totalSpinTime, 1);
+            const easeOut = 1 - Math.pow(1 - t, 3); 
+            
+            const prevAngle = app.currentAngle;
+            app.currentAngle = this.startAngle + (this.targetAngle - this.startAngle) * easeOut;
+
+            // Sound Tick Logic
+            const activeList = app.mode === 'jackpot' ? app.jackpotPrizes : app.prizes;
+            const arc = (2 * Math.PI) / activeList.length;
+            
+            const prevIndex = Math.floor((2 * Math.PI - (prevAngle % (2 * Math.PI))) / arc);
+            const currIndex = Math.floor((2 * Math.PI - (app.currentAngle % (2 * Math.PI))) / arc);
+            
+            if (prevIndex !== currIndex) {
+                app.playSound('tick');
+                // Animate pointer
+                const ptr = document.getElementById('pointer');
+                ptr.style.transform = 'translateY(-50%) rotate(-15deg)';
+                setTimeout(() => ptr.style.transform = 'translateY(-50%) rotate(0deg)', 50);
+            }
+
+            if (t >= 1) {
+                this.finishSpin();
+            }
+        },
+
+        finishSpin: function() {
+            app.isSpinning = false;
+            this.state = 'idle';
+            
+            // Correction / Blur Effect
+            // Calculated previously to land in center, so simple visual cue
+            // Light up
+            
+            const activeList = app.mode === 'jackpot' ? app.jackpotPrizes : app.prizes;
+            const prize = activeList[this.targetIndex];
+            
+            setTimeout(() => {
+                this.showResult(prize);
+            }, 500); // Wait a bit after stop
+        },
+
+        showResult: function(prize) {
+            // Audio
+            if (prize.name === 'JACKPOT') {
+                 app.playSound('jackpot');
+            } else {
+                 app.playSound('win');
+            }
+
+            // TTS
+            const utterance = new SpeechSynthesisUtterance("Wylosowano " + prize.name);
+            utterance.lang = 'pl-PL';
+            utterance.rate = 1.2; // Szybciej
+            utterance.pitch = 0.9;
+            utterance.volume = app.globalVolume;
+            window.speechSynthesis.speak(utterance);
+
+            // Visuals
+            const overlay = document.getElementById('result-overlay');
+            const txt = document.getElementById('result-text');
+            const img = document.getElementById('result-img');
+            
+            txt.textContent = prize.name === 'JACKPOT' ? 'JACKPOT!!!' : "Wylosowano: " + prize.name;
+            txt.style.color = prize.name === 'JACKPOT' ? 'gold' : '#fff';
+            
+            if (prize.gif) {
+                img.src = prize.gif;
+                img.style.display = 'block';
+            } else {
+                img.style.display = 'none';
+            }
+            
+            overlay.classList.add('visible');
+
+            // History Save
+            app.historyManager.add(prize.name, app.mode);
+
+            // Logic Branching
+            if (prize.name === 'JACKPOT' && app.mode !== 'jackpot') {
+                // Trigger Jackpot Mode
+                setTimeout(() => {
+                    app.triggerJackpotTransition();
+                }, 3000);
+            } else {
+                // Standard End
+                const delay = app.multiQueue > 0 ? 3000 : 6000;
+                setTimeout(() => {
+                    this.resetUI();
+                    if (app.multiQueue > 0) {
+                        app.multiQueue--;
+                        this.startSpin(true); // Fast spin for multi
+                    } else if (app.mode === 'jackpot') {
+                        // Return to normal from jackpot
+                        app.endJackpotMode();
+                    }
+                }, delay);
+            }
+        },
+
+        resetUI: function() {
+            document.getElementById('result-overlay').classList.remove('visible');
+            // Confetti cleanup if any
+            app.confetti.clear();
+        }
+    },
+
+    /* --- LOGIKA JACKPOT --- */
+    triggerJackpotTransition: function() {
+        document.getElementById('result-overlay').classList.remove('visible');
+        const wrapper = document.getElementById('wheel-wrapper');
+        
+        // Animate out
+        wrapper.style.transform = 'translateY(150%)';
+        
+        setTimeout(() => {
+            app.mode = 'jackpot';
+            document.body.classList.add('jackpot-active');
+            // Reset angle slightly for visual effect
+            app.currentAngle = 0;
+            
+            // Animate in
+            wrapper.style.transform = 'translateY(-150%)';
+            setTimeout(() => {
+                 wrapper.style.transform = 'translateY(0)';
+                 // Auto spin jackpot
+                 setTimeout(() => {
+                     app.wheelController.startSpin();
+                 }, 1000);
+            }, 100);
+        }, 1000);
+    },
+
+    endJackpotMode: function() {
+        const wrapper = document.getElementById('wheel-wrapper');
+        wrapper.style.transform = 'translateY(150%)';
+        setTimeout(() => {
+            app.mode = 'standard';
+            document.body.classList.remove('jackpot-active');
+            app.currentAngle = 0;
+            wrapper.style.transform = 'translateY(-150%)';
+            setTimeout(() => wrapper.style.transform = 'translateY(0)', 100);
+        }, 1000);
+    },
+
+    /* --- MULTI & BATCH MODE --- */
+    startMultiMode: function(count) {
+        app.navigate('wheel');
+        app.mode = 'multi'; // Used for history tag
+        app.multiQueue = count - 1; // First spin starts now, rest in queue
+        setTimeout(() => app.wheelController.startSpin(true), 500);
+    },
+
+    startCustomBatch: function() {
+        const count = parseInt(document.getElementById('custom-count').value);
+        const type = document.getElementById('custom-speed-mode').value;
+        
+        if (type === 'fast') {
+            // Like multi mode but more
+            app.startMultiMode(count);
+        } else {
+            // Instant / Loading Bar
+            const barContainer = document.getElementById('loading-bar-container');
+            const bar = document.getElementById('loading-bar');
+            const flame = document.getElementById('loading-flame');
+            
+            barContainer.style.display = 'block';
+            bar.style.width = '0%';
+            flame.style.left = '0%';
+            
+            let duration = 8000 + (count * 100); // Base 8s + bit more
+            if (duration > 13000) duration = 13000;
+            
+            // CSS Animation triggering
+            setTimeout(() => {
+                bar.style.transition = `width ${duration}ms linear`;
+                bar.style.width = '100%';
+                
+                // Animate flame manually to follow
+                const startTime = Date.now();
+                const flameInterval = setInterval(() => {
+                    const elapsed = Date.now() - startTime;
+                    const pct = Math.min(elapsed/duration, 1) * 100;
+                    flame.style.left = pct + '%';
+                    if(pct >= 100) clearInterval(flameInterval);
+                }, 50);
+
+                setTimeout(() => {
+                    this.processBatchResults(count);
+                    barContainer.style.display = 'none';
+                    bar.style.width = '0%'; // Reset
+                }, duration);
+            }, 100);
+        }
+    },
+
+    processBatchResults: function(count) {
+        const results = {};
+        const list = document.getElementById('batch-list');
+        list.innerHTML = '';
+        
+        // Logic simulation
+        for(let k=0; k<count; k++) {
+            let selected = null;
+            let rand = Math.random();
+            let cumulative = 0;
+            for (let i = 0; i < app.prizes.length; i++) {
+                cumulative += app.prizes[i].probability;
+                if (rand <= cumulative) { selected = app.prizes[i]; break; }
+            }
+            if(!selected) selected = app.prizes[app.prizes.length-1];
+            
+            if (selected.name === 'JACKPOT') {
+                // Roll jackpot prize
+                rand = Math.random(); cumulative = 0;
+                let jPrize = null;
+                for(let j=0; j<app.jackpotPrizes.length; j++){
+                    cumulative += app.jackpotPrizes[j].probability;
+                    if(rand <= cumulative) { jPrize = app.jackpotPrizes[j]; break; }
+                }
+                if(!jPrize) jPrize = app.jackpotPrizes[0];
+                
+                const key = "JACKPOT: " + jPrize.name;
+                results[key] = (results[key] || 0) + 1;
+                // Add to history immediately
+                app.historyManager.add(jPrize.name, 'batch-jackpot');
+            } else {
+                results[selected.name] = (results[selected.name] || 0) + 1;
+            }
+        }
+
+        // Render UI
+        for (const [name, qty] of Object.entries(results)) {
+            const li = document.createElement('li');
+            li.className = 'batch-item';
+            li.innerHTML = `<span>${name}</span> <strong>x${qty}</strong>`;
+            list.appendChild(li);
+        }
+        
+        // Add batch entry to history
+        app.historyManager.add(`Sesja masowa (${count} los.)`, 'batch');
+
+        document.getElementById('batch-result-area').style.display = 'block';
+    },
+
+    /* --- AUDIO --- */
+    playSound: function(type) {
+        if (!this.audioCtx || this.globalVolume === 0) return;
+        const vol = this.globalVolume;
+        
+        if (type === 'tick' && !document.getElementById('sound-tick').checked) return;
+
+        const osc = this.audioCtx.createOscillator();
+        const gain = this.audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(this.audioCtx.destination);
+
+        if (type === 'tick') {
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(600, this.audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(100, this.audioCtx.currentTime + 0.05);
+            gain.gain.setValueAtTime(vol * 0.3, this.audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, this.audioCtx.currentTime + 0.05);
+            osc.start();
+            osc.stop(this.audioCtx.currentTime + 0.06);
+        } else if (type === 'win') {
+            // Simple arpeggio
+            const notes = [659, 784, 880, 1046];
+            let time = this.audioCtx.currentTime;
+            notes.forEach((freq, i) => {
+                const o = this.audioCtx.createOscillator();
+                const g = this.audioCtx.createGain();
+                o.connect(g);
+                g.connect(this.audioCtx.destination);
+                o.type = 'sine';
+                o.frequency.value = freq;
+                g.gain.setValueAtTime(vol * 0.3, time + i*0.1);
+                g.gain.exponentialRampToValueAtTime(0.01, time + i*0.1 + 0.5);
+                o.start(time + i*0.1);
+                o.stop(time + i*0.1 + 0.6);
+            });
+            // Start confetti
+            app.confetti.burst();
+        } else if (type === 'jackpot') {
+             const notes = [440, 523, 659, 784, 1046, 1318, 1568];
+             let time = this.audioCtx.currentTime;
+             notes.forEach((freq, i) => {
+                const o = this.audioCtx.createOscillator();
+                const g = this.audioCtx.createGain();
+                o.connect(g);
+                g.connect(this.audioCtx.destination);
+                o.type = 'square'; // bolder sound
+                o.frequency.value = freq;
+                g.gain.setValueAtTime(vol * 0.4, time + i*0.15);
+                g.gain.exponentialRampToValueAtTime(0.01, time + i*0.15 + 1.0);
+                o.start(time + i*0.15);
+                o.stop(time + i*0.15 + 1.1);
+             });
+             app.confetti.burst(true);
+        }
+    },
+
+    /* --- HISTORY MANAGER --- */
+    historyManager: {
+        data: [],
+        currentPage: 1,
+        limit: 10,
+
+        load: function() {
+            const d = localStorage.getItem('azdus_history');
+            if (d) this.data = JSON.parse(d);
+        },
+        add: function(name, modeName) {
+            const entry = {
+                id: Date.now(),
+                date: new Date().toLocaleString(),
+                name: name,
+                mode: modeName
+            };
+            this.data.unshift(entry); // Add to top
+            if (this.data.length > 200) this.data.pop(); // Cap size
+            localStorage.setItem('azdus_history', JSON.stringify(this.data));
+            this.render();
+        },
+        render: function() {
+            this.limit = parseInt(document.getElementById('history-limit').value);
+            const start = (this.currentPage - 1) * this.limit;
+            const end = start + this.limit;
+            const pageData = this.data.slice(start, end);
+            const list = document.getElementById('history-list');
+            list.innerHTML = '';
+            
+            if (pageData.length === 0) {
+                list.innerHTML = '<div style="text-align:center; padding:10px;">Brak wpisów</div>';
+            } else {
+                pageData.forEach(item => {
+                    let modeClass = 'mode-standard';
+                    if (item.mode.includes('multi') || item.mode === 'batch') modeClass = 'mode-multi';
+                    if (item.mode === 'jackpot' || item.mode === 'batch-jackpot') modeClass = 'mode-jackpot';
+                    
+                    const div = document.createElement('div');
+                    div.className = 'history-item';
+                    div.innerHTML = `
+                        <div>
+                            <div>${item.name}</div>
+                            <div style="font-size:10px; opacity:0.6">${item.date}</div>
+                        </div>
+                        <div><span class="tag ${modeClass}">${item.mode}</span></div>
+                    `;
+                    list.appendChild(div);
+                });
+            }
+            
+            const totalPages = Math.ceil(this.data.length / this.limit) || 1;
+            document.getElementById('history-page-indicator').textContent = `${this.currentPage} / ${totalPages}`;
+        },
+        nextPage: function() {
+            const totalPages = Math.ceil(this.data.length / this.limit) || 1;
+            if (this.currentPage < totalPages) { this.currentPage++; this.render(); }
+        },
+        prevPage: function() {
+            if (this.currentPage > 1) { this.currentPage--; this.render(); }
+        },
+        clear: function() {
+            if(confirm("Czy na pewno chcesz wyczyścić całą historię?")) {
+                this.data = [];
+                localStorage.removeItem('azdus_history');
+                this.render();
+            }
+        }
+    },
+
+    /* --- SETTINGS --- */
+    settings: {
+        load: function() {
+            // Theme
+            const theme = localStorage.getItem('azdus_theme') || 'standard';
+            if(theme === 'dark') { document.body.setAttribute('data-theme', 'dark'); document.getElementById('theme-dark').checked = true; }
+            if(theme === 'kick') { document.body.setAttribute('data-theme', 'kick'); document.getElementById('theme-kick').checked = true; }
+            
+            // Vol
+            const vol = localStorage.getItem('azdus_volume');
+            if(vol !== null) {
+                app.globalVolume = parseFloat(vol);
+                document.getElementById('volume-slider').value = app.globalVolume;
+            }
+        },
+        toggleTheme: function(type) {
+            const chk = document.getElementById('theme-'+type).checked;
+            // Uncheck others
+            if (type === 'dark' && chk) document.getElementById('theme-kick').checked = false;
+            if (type === 'kick' && chk) document.getElementById('theme-dark').checked = false;
+            
+            document.body.removeAttribute('data-theme');
+            if(chk) document.body.setAttribute('data-theme', type);
+            localStorage.setItem('azdus_theme', chk ? type : 'standard');
+        },
+        setVolume: function(val) {
+            app.globalVolume = parseFloat(val);
+            localStorage.setItem('azdus_volume', val);
+        },
+        toggleTick: function(val) {
+            app.tickEnabled = val;
+        },
+        savePrizes: function() {
+            try {
+                const json = document.getElementById('json-editor').value;
+                const parsed = JSON.parse(json);
+                // Validation sum
+                let sum = 0;
+                parsed.forEach(p => sum += p.probability);
+                if (Math.abs(sum - 1) > 0.1) {
+                    alert("Ostrzeżenie: Suma prawdopodobieństw wynosi " + sum.toFixed(2) + ". Powinna wynosić ok. 1.0");
+                }
+                app.prizes = parsed;
+                localStorage.setItem('azdus_prizes', JSON.stringify(parsed));
+                alert("Zapisano pomyślnie!");
+            } catch(e) {
+                alert("Błąd JSON: " + e.message);
+            }
+        },
+        resetPrizes: function() {
+            if(confirm("Przywrócić domyślne nagrody?")) {
+                app.prizes = JSON.parse(JSON.stringify(defaultPrizes));
+                localStorage.removeItem('azdus_prizes');
+                document.getElementById('json-editor').value = JSON.stringify(app.prizes, null, 2);
+                alert("Przywrócono!");
+            }
+        }
+    },
+    
+    /* --- CONFETTI SYSTEM --- */
+    confetti: {
+        particles: [],
+        burst: function(goldMode = false) {
+            const canvas = document.getElementById('confetti-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            
+            for(let i=0; i<150; i++) {
+                this.particles.push({
+                    x: window.innerWidth/2,
+                    y: window.innerHeight/2,
+                    vx: (Math.random() - 0.5) * 20,
+                    vy: (Math.random() - 0.5) * 20,
+                    color: goldMode ? `hsl(${40 + Math.random()*20}, 100%, 50%)` : `hsl(${Math.random()*360}, 100%, 50%)`,
+                    size: Math.random() * 10 + 5,
+                    life: 100
+                });
+            }
+            this.animate();
+        },
+        animate: function() {
+            const canvas = document.getElementById('confetti-canvas');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0,0, canvas.width, canvas.height);
+            
+            app.confetti.particles.forEach((p, i) => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.2; // gravity
+                p.life--;
+                
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.rect(p.x, p.y, p.size, p.size);
+                ctx.fill();
+            });
+            
+            app.confetti.particles = app.confetti.particles.filter(p => p.life > 0);
+            
+            if(app.confetti.particles.length > 0) {
+                requestAnimationFrame(app.confetti.animate.bind(app.confetti));
+            } else {
+                ctx.clearRect(0,0, canvas.width, canvas.height);
+            }
+        },
+        clear: function() {
+            this.particles = [];
+        }
+    }
+};
+
+// Start
+window.onload = function() {
+    app.init();
+    
+    // Mobile sidebar togglers
+    document.getElementById('hamburger').onclick = () => {
+        document.getElementById('mobile-sidebar').classList.add('open');
+        document.getElementById('mobile-overlay').classList.add('open');
+    };
+    document.getElementById('mobile-overlay').onclick = () => {
+        document.getElementById('mobile-sidebar').classList.remove('open');
+        document.getElementById('mobile-overlay').classList.remove('open');
+    };
+};
+</script>
+
+</body>
+</html>
